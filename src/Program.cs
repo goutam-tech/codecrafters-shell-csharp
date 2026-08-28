@@ -27,7 +27,7 @@ class Program
                 continue;
             }
 
-            var (arguments, outputFile, errorFile) = ParseRedirection(parts);
+            var (arguments, outputFile, errorFile, outputAppend) = ParseRedirection(parts);
 
             string command = arguments[0];
 
@@ -47,7 +47,14 @@ class Program
 
                 if (outputFile != null)
                 {
-                    File.WriteAllText(outputFile, output + Environment.NewLine);
+                    if (outputAppend)
+                    {
+                        File.AppendAllText(outputFile, output + Environment.NewLine);
+                    }
+                    else
+                    {
+                        File.WriteAllText(outputFile, output + Environment.NewLine);
+                    }
                 }
                 else
                 {
@@ -84,7 +91,7 @@ class Program
 
             else
             {
-                ExecuteExternalCommand(arguments, outputFile, errorFile);
+                ExecuteExternalCommand(arguments, outputFile, errorFile, outputAppend);
             }
         }
     }
@@ -113,7 +120,7 @@ class Program
         }
     }
 
-    static void ExecuteExternalCommand(List<string> parts, string? outputFile, string? errorFile)
+    static void ExecuteExternalCommand(List<string> parts, string? outputFile, string? errorFile, bool outputAppend)
     {
         string command = parts[0];
 
@@ -161,7 +168,14 @@ class Program
 
         if (outputFile != null)
         {
-            File.WriteAllText(outputFile, stdout);
+            if (outputAppend)
+            {
+                File.AppendAllText(outputFile, stdout);
+            }
+            else
+            {
+                File.WriteAllText(outputFile, stdout);
+            }
         }
         if (errorFile != null)
         {
@@ -332,11 +346,12 @@ class Program
         return args;
     }
 
-    static (List<string> arguments, string? outputFile, string? errorFile) ParseRedirection(List<string> parts)
+    static (List<string> arguments, string? outputFile, string? errorFile, bool outputAppend) ParseRedirection(List<string> parts)
     {
         var arguments = new List<string>();
         string? outputFile = null;
         string? errorFile = null;
+        bool outputAppend = false;
 
         for (int i = 0; i < parts.Count; i++)
         {
@@ -345,6 +360,19 @@ class Program
                 if (i + 1 < parts.Count)
                 {
                     outputFile = parts[i + 1];
+                    outputAppend = false;
+                    i++;
+                }
+
+                continue;
+            }
+
+            if (parts[i] == ">>" || parts[i] == "1>>")
+            {
+                if (i + 1 < parts.Count)
+                {
+                    outputFile = parts[i + 1];
+                    outputAppend = true;
                     i++;
                 }
 
@@ -358,12 +386,13 @@ class Program
                     errorFile = parts[i + 1];
                     i++;
                 }
+
                 continue;
             }
 
             arguments.Add(parts[i]);
         }
 
-        return (arguments, outputFile, errorFile);
+        return (arguments, outputFile, errorFile, outputAppend);
     }
 }
