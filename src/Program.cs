@@ -176,6 +176,16 @@ class Program
 
     static void HandleCd(string path)
     {
+        if(path == "~")
+        {
+            string? home = Environment.GetEnvironmentVariable("Home");
+
+            if(home != null)
+            {
+                path = home;
+            }
+        }
+
         if (Directory.Exists(path))
         {
             Environment.CurrentDirectory = path;
