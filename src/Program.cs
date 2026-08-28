@@ -27,7 +27,7 @@ class Program
                 continue;
             }
 
-            var (arguments, outputFile, errorFile, outputAppend) = ParseRedirection(parts);
+            var (arguments, outputFile, errorFile, outputAppend, errorAppend) = ParseRedirection(parts);
 
             string command = arguments[0];
 
@@ -42,7 +42,17 @@ class Program
 
                 if (errorFile != null)
                 {
-                    File.WriteAllText(errorFile, "");
+                    if (errorAppend)
+                    {
+                        if (!File.Exists(errorFile))
+                        {
+                            File.WriteAllText(errorFile, "");
+                        }
+                    }
+                    else
+                    {
+                        File.WriteAllText(errorFile, "");
+                    }
                 }
 
                 if (outputFile != null)
@@ -71,10 +81,9 @@ class Program
             {
                 if (parts.Count < 2)
                 {
-                    Console.WriteLine("cd: missing argument");
+                    Console.WriteLine($"cd: missing argument");
                     continue;
                 }
-
                 HandleCd(parts[1]);
             }
 
@@ -91,7 +100,7 @@ class Program
 
             else
             {
-                ExecuteExternalCommand(arguments, outputFile, errorFile, outputAppend);
+                ExecuteExternalCommand(arguments, outputFile, errorFile, outputAppend, errorAppend);
             }
         }
     }
@@ -101,7 +110,7 @@ class Program
         if (command == "echo" ||
             command == "exit" ||
             command == "type" ||
-            command == "pwd"  ||
+            command == "pwd" ||
             command == "cd")
         {
             Console.WriteLine($"{command} is a shell builtin");
@@ -120,7 +129,7 @@ class Program
         }
     }
 
-    static void ExecuteExternalCommand(List<string> parts, string? outputFile, string? errorFile, bool outputAppend)
+    static void ExecuteExternalCommand(List<string> parts, string? outputFile, string? errorFile, bool outputAppend, bool errorAppend)
     {
         string command = parts[0];
 
@@ -177,9 +186,17 @@ class Program
                 File.WriteAllText(outputFile, stdout);
             }
         }
+
         if (errorFile != null)
         {
-            File.WriteAllText(errorFile, stderr);
+            if (errorAppend)
+            {
+                File.AppendAllText(errorFile, stderr);
+            }
+            else
+            {
+                File.WriteAllText(errorFile, stderr);
+            }
         }
 
         process.WaitForExit();
@@ -236,11 +253,11 @@ class Program
 
     static void HandleCd(string path)
     {
-        if(path == "~")
+        if (path == "~")
         {
             string? home = Environment.GetEnvironmentVariable("HOME");
 
-            if(home != null)
+            if (home != null)
             {
                 path = home;
             }
@@ -346,12 +363,13 @@ class Program
         return args;
     }
 
-    static (List<string> arguments, string? outputFile, string? errorFile, bool outputAppend) ParseRedirection(List<string> parts)
+    static (List<string> arguments, string? outputFile, string? errorFile, bool outputAppend, bool errorAppend) ParseRedirection(List<string> parts)
     {
         var arguments = new List<string>();
         string? outputFile = null;
         string? errorFile = null;
         bool outputAppend = false;
+        bool errorAppend = false;
 
         for (int i = 0; i < parts.Count; i++)
         {
@@ -384,6 +402,19 @@ class Program
                 if (i + 1 < parts.Count)
                 {
                     errorFile = parts[i + 1];
+                    errorAppend = false;
+                    i++;
+                }
+
+                continue;
+            }
+
+            if (parts[i] == "2>>")
+            {
+                if (i + 1 < parts.Count)
+                {
+                    errorFile = parts[i + 1];
+                    errorAppend = true;
                     i++;
                 }
 
@@ -393,6 +424,6 @@ class Program
             arguments.Add(parts[i]);
         }
 
-        return (arguments, outputFile, errorFile, outputAppend);
+        return (arguments, outputFile, errorFile, outputAppend, errorAppend);
     }
 }
