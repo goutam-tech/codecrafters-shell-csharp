@@ -14,7 +14,7 @@ class Program
             {
                 Console.WriteLine(command[5..]);
             }
-            else if (command.StartsWith("type"))
+            else if (command.StartsWith("type "))
             {
                 HandleType(command);
             }
