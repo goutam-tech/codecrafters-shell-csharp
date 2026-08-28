@@ -213,14 +213,43 @@ class Program
         {
             char c = input[i];
 
-            if (c == '\\' &&
-                !insideSingleQuotes &&
-                !insideDoubleQuotes)
+            if (c == '\\')
             {
-                if (i + 1 < input.Length)
+                if (insideSingleQuotes)
                 {
-                    i++;
-                    current.Append(input[i]);
+                    current.Append(c);
+                }
+                else if (insideDoubleQuotes)
+                {
+                    if (i + 1 < input.Length)
+                    {
+                        char next = input[i + 1];
+
+                        if (next == '\\' ||
+                            next == '"' ||
+                            next == '$' ||
+                            next == '`')
+                        {
+                            i++;
+                            current.Append(next);
+                        }
+                        else
+                        {
+                            current.Append(c);
+                        }
+                    }
+                    else
+                    {
+                        current.Append(c);
+                    }
+                }
+                else
+                {
+                    if (i + 1 < input.Length)
+                    {
+                        i++;
+                        current.Append(input[i]);
+                    }
                 }
 
                 continue;
