@@ -178,7 +178,7 @@ class Program
     {
         if(path == "~")
         {
-            string? home = Environment.GetEnvironmentVariable("Home");
+            string? home = Environment.GetEnvironmentVariable("HOME");
 
             if(home != null)
             {
