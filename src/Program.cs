@@ -1,6 +1,8 @@
 using System;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
+using System.Text;
 
 class Program
 {
@@ -17,10 +19,7 @@ class Program
                 continue;
             }
 
-            string[] parts = input.Split(
-                ' ',
-                StringSplitOptions.RemoveEmptyEntries
-            );
+            List<string> parts = ParseCommand(input);
 
             string command = parts[0];
 
@@ -31,7 +30,7 @@ class Program
 
             else if (command == "echo")
             {
-                Console.WriteLine(string.Join(" ", parts[1..]));
+                Console.WriteLine(string.Join(" ", parts.Skip(1)));
             }
 
             else if (command == "pwd")
@@ -194,5 +193,42 @@ class Program
         {
             Console.WriteLine($"cd: {path}: No such file or directory");
         }
+    }
+
+    static List<string> ParseCommand(string input)
+    {
+        var args = new List<string>();
+        var current = new System.Text.StringBuilder();
+
+        bool insideSingleQuotes = false;
+
+        foreach(char c in input)
+        {
+            if(c == '\'')
+            {
+                insideSingleQuotes = !insideSingleQuotes;
+            }
+
+            else if(char.IsWhiteSpace(c) && !insideSingleQuotes)
+            {
+                if(current.Length > 0)
+                {
+                    args.Add(current.ToString());
+                    current.Clear();
+                }
+            }
+
+            else
+            {
+                current.Append(c);
+            }
+        }
+
+        if(current.Length > 0)
+        {
+            args.Add(current.ToString());
+        }
+
+        return args;
     }
 }
