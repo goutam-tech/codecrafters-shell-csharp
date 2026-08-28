@@ -38,7 +38,7 @@ class Program
 
             else if (command == "echo")
             {
-                string output = string.Join(" ", parts.Skip(1));
+                string output = string.Join(" ", arguments.Skip(1));
 
                 if (outputFile != null)
                 {
