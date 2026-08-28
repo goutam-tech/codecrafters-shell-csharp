@@ -90,6 +90,8 @@ class Program
 
         process.StartInfo.FileName = executable;
 
+        process.StartInfo.ArgumentList.Add(command);
+
         for (int i = 1; i < parts.Length; i++)
         {
             process.StartInfo.ArgumentList.Add(parts[i]);
