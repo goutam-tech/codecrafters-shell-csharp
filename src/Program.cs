@@ -55,25 +55,26 @@ class Program
                 Console.WriteLine(Environment.CurrentDirectory);
             }
 
-            else if(command == "cd")
+            else if (command == "cd")
             {
-                if(parts.Count < 2)
+                if (arguments.Count < 2)
                 {
-                    Console.WriteLine($"cd: missing argument");
+                    Console.WriteLine("cd: missing argument");
                     continue;
                 }
-                HandleCd(parts[1]);
+
+                HandleCd(arguments[1]);
             }
 
             else if (command == "type")
             {
-                if (parts.Count < 2)
+                if (arguments.Count < 2)
                 {
                     Console.WriteLine("type: missing argument");
                     continue;
                 }
 
-                HandleType(parts[1]);
+                HandleType(arguments[1]);
             }
 
             else
