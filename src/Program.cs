@@ -1,5 +1,6 @@
 using System;
 using System.Diagnostics;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -21,6 +22,11 @@ class Program
 
             List<string> parts = ParseCommand(input);
 
+            if (parts.Count == 0)
+            {
+                continue;
+            }
+
             string command = parts[0];
 
             if (command == "exit")
@@ -40,7 +46,7 @@ class Program
 
             else if(command == "cd")
             {
-                if(parts.Length < 2)
+                if(parts.Count < 2)
                 {
                     Console.WriteLine($"cd: missing argument");
                     continue;
@@ -50,7 +56,7 @@ class Program
 
             else if (command == "type")
             {
-                if (parts.Length < 2)
+                if (parts.Count < 2)
                 {
                     Console.WriteLine("type: missing argument");
                     continue;
@@ -90,7 +96,7 @@ class Program
         }
     }
 
-    static void ExecuteExternalCommand(string[] parts)
+    static void ExecuteExternalCommand(List<string> parts)
     {
         string command = parts[0];
 
@@ -114,7 +120,7 @@ class Program
 
         process.StartInfo.ArgumentList.Add(executable);
 
-        for (int i = 1; i < parts.Length; i++)
+        for (int i = 1; i < parts.Count; i++)
         {
             process.StartInfo.ArgumentList.Add(parts[i]);
         }
@@ -198,7 +204,7 @@ class Program
     static List<string> ParseCommand(string input)
     {
         var args = new List<string>();
-        var current = new System.Text.StringBuilder();
+        var current = new StringBuilder();
 
         bool insideSingleQuotes = false;
 
