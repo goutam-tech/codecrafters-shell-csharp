@@ -6,11 +6,18 @@ class Program
         {
             Console.Write("$ ");
             var command = Console.ReadLine();
-            if(command == "exit")
+            if (command == "exit")
             {
                 break;
             }
-            Console.WriteLine($"{command}: command not found");
+            else if (command.StartsWith("echo "))
+            {
+                Console.WriteLine(command[5..]);
+            }
+            else
+            {
+                Console.WriteLine($"{command}: command not found");
+            }
         }
     }
 }
