@@ -14,10 +14,26 @@ class Program
             {
                 Console.WriteLine(command[5..]);
             }
+            else if (command.StartsWith("type"))
+            {
+                HandleType(command);
+            }
             else
             {
                 Console.WriteLine($"{command}: command not found");
             }
+        }
+    }
+
+    static void HandleType(string command)
+    {
+        if (command == "echo" || command == "exit" || command == "type")
+        {
+            Console.WriteLine($"{command} is a shell builtin");
+        }
+        else
+        {
+            Console.WriteLine($"{command}: not found");
         }
     }
 }
