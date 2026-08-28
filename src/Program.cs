@@ -27,7 +27,9 @@ class Program
                 continue;
             }
 
-            string command = parts[0];
+            var (arguments, outputFile) = ParseRedirection(parts);
+
+            string command = arguments[0];
 
             if (command == "exit")
             {
@@ -36,7 +38,16 @@ class Program
 
             else if (command == "echo")
             {
-                Console.WriteLine(string.Join(" ", parts.Skip(1)));
+                string output = string.Join(" ", parts.Skip(1));
+
+                if (outputFile != null)
+                {
+                    File.WriteAllText(outputFile, output + Environment.NewLine);
+                }
+                else
+                {
+                    Console.WriteLine(output);
+                }
             }
 
             else if (command == "pwd")
@@ -67,7 +78,7 @@ class Program
 
             else
             {
-                ExecuteExternalCommand(parts);
+                ExecuteExternalCommand(arguments, outputFile);
             }
         }
     }
@@ -96,7 +107,7 @@ class Program
         }
     }
 
-    static void ExecuteExternalCommand(List<string> parts)
+    static void ExecuteExternalCommand(List<string> parts, string? outputFile)
     {
         string command = parts[0];
 
@@ -120,7 +131,6 @@ class Program
         );
 
         process.StartInfo.ArgumentList.Add(command);
-
         process.StartInfo.ArgumentList.Add(executable);
 
         for (int i = 1; i < parts.Count; i++)
@@ -128,7 +138,20 @@ class Program
             process.StartInfo.ArgumentList.Add(parts[i]);
         }
 
+        if (outputFile != null)
+        {
+            process.StartInfo.RedirectStandardOutput = true;
+        }
+
         process.Start();
+
+        if (outputFile != null)
+        {
+            string output = process.StandardOutput.ReadToEnd();
+
+            File.WriteAllText(outputFile, output);
+        }
+
         process.WaitForExit();
     }
 
@@ -291,5 +314,30 @@ class Program
         }
 
         return args;
+    }
+
+    static (List<string> arguments, string? outputFile) ParseRedirection(
+    List<string> parts)
+    {
+        var arguments = new List<string>();
+        string? outputFile = null;
+
+        for (int i = 0; i < parts.Count; i++)
+        {
+            if (parts[i] == ">" || parts[i] == "1>")
+            {
+                if (i + 1 < parts.Count)
+                {
+                    outputFile = parts[i + 1];
+                    i++;
+                }
+
+                continue;
+            }
+
+            arguments.Add(parts[i]);
+        }
+
+        return (arguments, outputFile);
     }
 }
