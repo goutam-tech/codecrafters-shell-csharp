@@ -16,7 +16,7 @@ class Program
             }
             else if (command.StartsWith("type "))
             {
-                HandleType(command);
+                HandleType(command[5..]);
             }
             else
             {
