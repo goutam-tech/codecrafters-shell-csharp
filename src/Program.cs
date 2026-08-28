@@ -1,3 +1,6 @@
+using System;
+using System.IO;
+
 class Program
 {
     static void Main()
@@ -30,10 +33,46 @@ class Program
         if (command == "echo" || command == "exit" || command == "type")
         {
             Console.WriteLine($"{command} is a shell builtin");
+            return;
         }
-        else
+
+        string? path = Environment.GetEnvironmentVariable("PATH");
+
+        if (path != null)
         {
-            Console.WriteLine($"{command}: not found");
+            string[] dir = path.Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries);
+
+            foreach(string directory in dir)
+            {
+                string fullPath = Path.Combine(directory, command);
+
+                if (!File.Exists(fullPath))
+                {
+                    continue;
+                }
+
+                if (!IsExecutable(fullPath))
+                {
+                    continue;
+                }
+
+                Console.WriteLine($"{command} is {fullPath}");
+                return;
+            }
         }
+
+        Console.WriteLine($"{command}: not found");
+    }
+
+    static bool IsExecutable(string filepath)
+    {
+        if(!OperatingSystem.IsLinux() && !OperatingSystem.IsMacOS())
+        {
+            return true;
+        }
+
+        UnixFileMode mode = File.GetUnixFileMode(filepath);
+
+        return mode.HasFlag(UnixFileMode.UserExecute) || mode.HasFlag(UnixFileMode.GroupExecute) || mode.HasFlag(UnixFileMode.OtherExecute);
     }
 }
