@@ -88,9 +88,10 @@ class Program
 
         var process = new Process();
 
-        process.StartInfo.FileName = executable;
+        process.StartInfo.FileName = "/usr/bin/env";
 
-        process.StartInfo.ArgumentList.Add(command);
+        process.StartInfo.ArgumentList.Add($"--argv0={command}");
+        process.StartInfo.ArgumentList.Add(executable);
 
         for (int i = 1; i < parts.Length; i++)
         {
