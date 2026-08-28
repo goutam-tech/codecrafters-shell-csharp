@@ -114,7 +114,10 @@ class Program
         process.StartInfo.UseShellExecute = false;
 
         process.StartInfo.ArgumentList.Add("-c");
-        process.StartInfo.ArgumentList.Add("exec -a \"$0\" \"$1\" \"${@:2}\"");
+
+        process.StartInfo.ArgumentList.Add(
+            "exec -a \"$0\" \"$1\" \"${@:2}\""
+        );
 
         process.StartInfo.ArgumentList.Add(command);
 
@@ -126,7 +129,6 @@ class Program
         }
 
         process.Start();
-
         process.WaitForExit();
     }
 
