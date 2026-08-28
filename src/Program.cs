@@ -41,7 +41,12 @@ class Program
 
             else if(command == "cd")
             {
-                HandleCd(command[3..]);
+                if(parts.Length < 2)
+                {
+                    Console.WriteLine($"cd: missing argument");
+                    continue;
+                }
+                HandleCd(parts[1]);
             }
 
             else if (command == "type")
