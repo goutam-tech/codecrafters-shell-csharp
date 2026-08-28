@@ -27,7 +27,7 @@ class Program
                 continue;
             }
 
-            var (arguments, outputFile) = ParseRedirection(parts);
+            var (arguments, outputFile, errorFile) = ParseRedirection(parts);
 
             string command = arguments[0];
 
@@ -39,6 +39,11 @@ class Program
             else if (command == "echo")
             {
                 string output = string.Join(" ", arguments.Skip(1));
+
+                if (errorFile != null)
+                {
+                    File.WriteAllText(errorFile, "");
+                }
 
                 if (outputFile != null)
                 {
@@ -57,29 +62,29 @@ class Program
 
             else if (command == "cd")
             {
-                if (arguments.Count < 2)
+                if (parts.Count < 2)
                 {
                     Console.WriteLine("cd: missing argument");
                     continue;
                 }
 
-                HandleCd(arguments[1]);
+                HandleCd(parts[1]);
             }
 
             else if (command == "type")
             {
-                if (arguments.Count < 2)
+                if (parts.Count < 2)
                 {
                     Console.WriteLine("type: missing argument");
                     continue;
                 }
 
-                HandleType(arguments[1]);
+                HandleType(parts[1]);
             }
 
             else
             {
-                ExecuteExternalCommand(arguments, outputFile);
+                ExecuteExternalCommand(arguments, outputFile, errorFile);
             }
         }
     }
@@ -108,7 +113,7 @@ class Program
         }
     }
 
-    static void ExecuteExternalCommand(List<string> parts, string? outputFile)
+    static void ExecuteExternalCommand(List<string> parts, string? outputFile, string? errorFile)
     {
         string command = parts[0];
 
@@ -144,13 +149,23 @@ class Program
             process.StartInfo.RedirectStandardOutput = true;
         }
 
+        if (errorFile != null)
+        {
+            process.StartInfo.RedirectStandardError = true;
+        }
+
         process.Start();
+
+        string? stdout = outputFile != null ? process.StandardOutput.ReadToEnd() : null;
+        string? stderr = errorFile != null ? process.StandardError.ReadToEnd() : null;
 
         if (outputFile != null)
         {
-            string output = process.StandardOutput.ReadToEnd();
-
-            File.WriteAllText(outputFile, output);
+            File.WriteAllText(outputFile, stdout);
+        }
+        if (errorFile != null)
+        {
+            File.WriteAllText(errorFile, stderr);
         }
 
         process.WaitForExit();
@@ -317,10 +332,11 @@ class Program
         return args;
     }
 
-    static (List<string> arguments, string? outputFile) ParseRedirection(List<string> parts)
+    static (List<string> arguments, string? outputFile, string? errorFile) ParseRedirection(List<string> parts)
     {
         var arguments = new List<string>();
         string? outputFile = null;
+        string? errorFile = null;
 
         for (int i = 0; i < parts.Count; i++)
         {
@@ -335,9 +351,19 @@ class Program
                 continue;
             }
 
+            if (parts[i] == "2>")
+            {
+                if (i + 1 < parts.Count)
+                {
+                    errorFile = parts[i + 1];
+                    i++;
+                }
+                continue;
+            }
+
             arguments.Add(parts[i]);
         }
 
-        return (arguments, outputFile);
+        return (arguments, outputFile, errorFile);
     }
 }
