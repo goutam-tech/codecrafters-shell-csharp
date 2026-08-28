@@ -207,15 +207,20 @@ class Program
         var current = new StringBuilder();
 
         bool insideSingleQuotes = false;
+        bool insideDoubleQuotes = false;
 
         foreach(char c in input)
         {
-            if(c == '\'')
+            if (c == '\'' && !insideDoubleQuotes)
             {
                 insideSingleQuotes = !insideSingleQuotes;
             }
 
-            else if(char.IsWhiteSpace(c) && !insideSingleQuotes)
+            else if (c == '"' && !insideSingleQuotes)
+            {
+                insideDoubleQuotes = !insideDoubleQuotes;
+            }
+            else if (char.IsWhiteSpace(c) && !insideSingleQuotes && !insideDoubleQuotes)
             {
                 if(current.Length > 0)
                 {
