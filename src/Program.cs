@@ -209,33 +209,52 @@ class Program
         bool insideSingleQuotes = false;
         bool insideDoubleQuotes = false;
 
-        foreach(char c in input)
+        for (int i = 0; i < input.Length; i++)
         {
+            char c = input[i];
+
+            if (c == '\\' &&
+                !insideSingleQuotes &&
+                !insideDoubleQuotes)
+            {
+                if (i + 1 < input.Length)
+                {
+                    i++;
+                    current.Append(input[i]);
+                }
+
+                continue;
+            }
+
             if (c == '\'' && !insideDoubleQuotes)
             {
                 insideSingleQuotes = !insideSingleQuotes;
+                continue;
             }
 
-            else if (c == '"' && !insideSingleQuotes)
+            if (c == '"' && !insideSingleQuotes)
             {
                 insideDoubleQuotes = !insideDoubleQuotes;
+                continue;
             }
-            else if (char.IsWhiteSpace(c) && !insideSingleQuotes && !insideDoubleQuotes)
+
+            if (char.IsWhiteSpace(c) &&
+                !insideSingleQuotes &&
+                !insideDoubleQuotes)
             {
-                if(current.Length > 0)
+                if (current.Length > 0)
                 {
                     args.Add(current.ToString());
                     current.Clear();
                 }
+
+                continue;
             }
 
-            else
-            {
-                current.Append(c);
-            }
+            current.Append(c);
         }
 
-        if(current.Length > 0)
+        if (current.Length > 0)
         {
             args.Add(current.ToString());
         }
