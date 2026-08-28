@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.IO;
 
 class Program
@@ -8,71 +9,145 @@ class Program
         while (true)
         {
             Console.Write("$ ");
-            var command = Console.ReadLine();
+
+            var input = Console.ReadLine();
+
+            if (string.IsNullOrWhiteSpace(input))
+            {
+                continue;
+            }
+
+            string[] parts = input.Split(
+                ' ',
+                StringSplitOptions.RemoveEmptyEntries
+            );
+
+            string command = parts[0];
+
             if (command == "exit")
             {
                 break;
             }
-            else if (command.StartsWith("echo "))
+
+            else if (command == "echo")
             {
-                Console.WriteLine(command[5..]);
+                Console.WriteLine(string.Join(" ", parts[1..]));
             }
-            else if (command.StartsWith("type "))
+
+            else if (command == "type")
             {
-                HandleType(command[5..]);
+                if (parts.Length < 2)
+                {
+                    Console.WriteLine("type: missing argument");
+                    continue;
+                }
+
+                HandleType(parts[1]);
             }
+
             else
             {
-                Console.WriteLine($"{command}: command not found");
+                ExecuteExternalCommand(parts);
             }
         }
     }
 
     static void HandleType(string command)
     {
-        if (command == "echo" || command == "exit" || command == "type")
+        if (command == "echo" ||
+            command == "exit" ||
+            command == "type")
         {
             Console.WriteLine($"{command} is a shell builtin");
             return;
         }
 
-        string? path = Environment.GetEnvironmentVariable("PATH");
+        string? executable = FindExecutable(command);
 
-        if (path != null)
+        if (executable != null)
         {
-            string[] dir = path.Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries);
-
-            foreach(string directory in dir)
-            {
-                string fullPath = Path.Combine(directory, command);
-
-                if (!File.Exists(fullPath))
-                {
-                    continue;
-                }
-
-                if (!IsExecutable(fullPath))
-                {
-                    continue;
-                }
-
-                Console.WriteLine($"{command} is {fullPath}");
-                return;
-            }
+            Console.WriteLine($"{command} is {executable}");
         }
-
-        Console.WriteLine($"{command}: not found");
+        else
+        {
+            Console.WriteLine($"{command}: not found");
+        }
     }
 
-    static bool IsExecutable(string filepath)
+    static void ExecuteExternalCommand(string[] parts)
     {
-        if(!OperatingSystem.IsLinux() && !OperatingSystem.IsMacOS())
+        string command = parts[0];
+
+        string? executable = FindExecutable(command);
+
+        if (executable == null)
+        {
+            Console.WriteLine($"{command}: command not found");
+            return;
+        }
+
+        var process = new Process();
+
+        process.StartInfo.FileName = executable;
+
+        for (int i = 1; i < parts.Length; i++)
+        {
+            process.StartInfo.ArgumentList.Add(parts[i]);
+        }
+
+        process.StartInfo.UseShellExecute = false;
+
+        process.Start();
+
+        process.WaitForExit();
+    }
+
+    static string? FindExecutable(string command)
+    {
+        string? path = Environment.GetEnvironmentVariable("PATH");
+
+        if (string.IsNullOrEmpty(path))
+        {
+            return null;
+        }
+
+        string[] directories = path.Split(
+            Path.PathSeparator,
+            StringSplitOptions.RemoveEmptyEntries
+        );
+
+        foreach (string directory in directories)
+        {
+            string fullPath = Path.Combine(directory, command);
+
+            if (!File.Exists(fullPath))
+            {
+                continue;
+            }
+
+            if (!IsExecutable(fullPath))
+            {
+                continue;
+            }
+
+            return fullPath;
+        }
+
+        return null;
+    }
+
+    static bool IsExecutable(string filePath)
+    {
+        if (!OperatingSystem.IsLinux() &&
+            !OperatingSystem.IsMacOS())
         {
             return true;
         }
 
-        UnixFileMode mode = File.GetUnixFileMode(filepath);
+        UnixFileMode mode = File.GetUnixFileMode(filePath);
 
-        return mode.HasFlag(UnixFileMode.UserExecute) || mode.HasFlag(UnixFileMode.GroupExecute) || mode.HasFlag(UnixFileMode.OtherExecute);
+        return mode.HasFlag(UnixFileMode.UserExecute) ||
+               mode.HasFlag(UnixFileMode.GroupExecute) ||
+               mode.HasFlag(UnixFileMode.OtherExecute);
     }
 }
