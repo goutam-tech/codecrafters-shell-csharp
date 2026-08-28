@@ -39,6 +39,11 @@ class Program
                 Console.WriteLine(Environment.CurrentDirectory);
             }
 
+            else if(command == "cd")
+            {
+                HandleCd(command[3..]);
+            }
+
             else if (command == "type")
             {
                 if (parts.Length < 2)
@@ -62,7 +67,8 @@ class Program
         if (command == "echo" ||
             command == "exit" ||
             command == "type" ||
-            command == "pwd")
+            command == "pwd"  ||
+            command == "cd")
         {
             Console.WriteLine($"{command} is a shell builtin");
             return;
@@ -161,5 +167,17 @@ class Program
         return mode.HasFlag(UnixFileMode.UserExecute) ||
                mode.HasFlag(UnixFileMode.GroupExecute) ||
                mode.HasFlag(UnixFileMode.OtherExecute);
+    }
+
+    static void HandleCd(string path)
+    {
+        if (Directory.Exists(path))
+        {
+            Environment.CurrentDirectory = path;
+        }
+        else
+        {
+            Console.WriteLine($"cd: {path}: No such file or directory");
+        }
     }
 }
