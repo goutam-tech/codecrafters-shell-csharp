@@ -2,8 +2,11 @@ class Program
 {
     static void Main()
     {
-        Console.Write("$ ");
-        string command = Console.ReadLine();
-        Console.WriteLine($"{command}: command not found");
+        while (true)
+        {
+            Console.Write("$ ");
+            var command = Console.ReadLine();
+            Console.WriteLine($"{command}: command not found");
+        }
     }
 }
