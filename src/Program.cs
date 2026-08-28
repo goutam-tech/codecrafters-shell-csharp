@@ -316,8 +316,7 @@ class Program
         return args;
     }
 
-    static (List<string> arguments, string? outputFile) ParseRedirection(
-    List<string> parts)
+    static (List<string> arguments, string? outputFile) ParseRedirection(List<string> parts)
     {
         var arguments = new List<string>();
         string? outputFile = null;
