@@ -88,17 +88,21 @@ class Program
 
         var process = new Process();
 
-        process.StartInfo.FileName = "/usr/bin/env";
+        process.StartInfo.FileName = "/bin/bash";
+        process.StartInfo.UseShellExecute = false;
 
-        process.StartInfo.ArgumentList.Add($"--argv0={command}");
+        process.StartInfo.ArgumentList.Add("-c");
+
+        process.StartInfo.ArgumentList.Add("exec \"$1\" \"${@:2}\"");
+
+        process.StartInfo.ArgumentList.Add(command);
+
         process.StartInfo.ArgumentList.Add(executable);
 
         for (int i = 1; i < parts.Length; i++)
         {
             process.StartInfo.ArgumentList.Add(parts[i]);
         }
-
-        process.StartInfo.UseShellExecute = false;
 
         process.Start();
 
