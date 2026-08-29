@@ -518,6 +518,19 @@ class Program
             return;
         }
 
+        string commonPrefix = FindLongestCommonPrefix(matches);
+
+        if(commonPrefix.Length > current.Length)
+        {
+            string completion = commonPrefix[current.Length..];
+
+            Console.Write(completion);
+            input.Append(completion);
+
+            tabPressed = false;
+            return;
+        }
+
         if (!tabPressed)
         {
             Console.Write('\x07');
@@ -606,5 +619,36 @@ class Program
 
         input.Append(completion);
         input.Append(' ');
+    }
+
+    static string FindLongestCommonPrefix(List<string> matches)
+    {
+        if(matches.Count == 0)
+        {
+            return string.Empty;
+        }
+
+        string prefix = matches[0];
+
+        for(int i = 1; i < matches.Count; i++)
+        {
+            int length = Math.Min(prefix.Length, matches[i].Length);
+
+            int j = 0;
+
+            while (j < length && prefix[j] == matches[i][j])
+            {
+                j++;
+            }
+
+            prefix = prefix[..j];
+
+            if (prefix.Length == 0)
+            {
+                break;
+            }
+        }
+
+        return prefix;
     }
 }
