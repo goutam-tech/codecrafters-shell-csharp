@@ -25,7 +25,7 @@ public static class FilenameCompletion
 
         if (lastSlash == -1)
         {
-            directoryPath = ".";
+            directoryPath = "";
             prefix = partialPath;
         }
         else
@@ -54,9 +54,8 @@ public static class FilenameCompletion
                 return false;
             }
 
-            string completedPath = directoryPath + match;
-
-            string completion = completedPath[partialPath.Length..];
+            // Only append the part that the user has not typed yet.
+            string completion = match[prefix.Length..];
 
             Console.Write(completion);
             Console.Write(' ');
