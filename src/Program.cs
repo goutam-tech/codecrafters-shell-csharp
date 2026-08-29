@@ -462,7 +462,17 @@ class Program
 
             if (key.Key == ConsoleKey.Tab)
             {
-                TryComplete(input);
+                string current = input.ToString();
+
+                if (current.Contains(' '))
+                {
+                    FilenameCompletion.TryComplete(input);
+                }
+                else
+                {
+                    TryComplete(input);
+                }
+
                 continue;
             }
 
