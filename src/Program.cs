@@ -7,6 +7,7 @@ using System.Text;
 
 class Program
 {
+    static bool tabPressed = false;
     static void Main()
     {
         while (true)
@@ -443,6 +444,7 @@ class Program
             if(key.Key == ConsoleKey.Enter)
             {
                 Console.WriteLine();
+                tabPressed = false;
                 return input.ToString();
             }
 
@@ -454,6 +456,7 @@ class Program
                     Console.Write("\b \b");
                 }
 
+                tabPressed = false;
                 continue;
             }
 
@@ -467,6 +470,8 @@ class Program
             {
                 input.Append(key.KeyChar);
                 Console.Write(key.KeyChar);
+
+                tabPressed = false;
             }
         }
     }
@@ -484,36 +489,61 @@ class Program
     {
         string current = input.ToString();
 
-        string? match = Builtins.FirstOrDefault(
+        string? builtinMatch = Builtins.FirstOrDefault(
             builtin =>
                 builtin.StartsWith(current, StringComparison.Ordinal) &&
                 builtin != current
         );
 
-        match ??= FindExecutableCompletion(current);
-
-        if (match == null)
+        if(builtinMatch != null)
         {
-            Console.Write('\x07');
+            Complete(input, builtinMatch);
+            tabPressed = false;
             return;
         }
 
-        string completion = match[current.Length..];
+        List<string> matches = FindExecutableCompletions(current);
 
-        Console.Write(completion);
-        Console.Write(' ');
+        if (matches.Count == 0)
+        {
+            Console.Write('\x07');
+            tabPressed = false;
+            return;
+        }
 
-        input.Append(completion);
-        input.Append(' ');
+        if (matches.Count == 1)
+        {
+            Complete(input, matches[0]);
+            tabPressed = false;
+            return;
+        }
+
+        if (!tabPressed)
+        {
+            Console.Write('\x07');
+            tabPressed = true;
+            return;
+        }
+
+        Console.WriteLine();
+
+        Console.WriteLine(string.Join("  ", matches));
+
+        Console.Write("$ ");
+        Console.Write(input.ToString());
+
+        tabPressed = false;
     }
 
-    static string? FindExecutableCompletion(string prefix)
+    static List<string> FindExecutableCompletions(string prefix)
     {
+        var matches = new HashSet<string>(StringComparer.Ordinal);
+
         string? path = Environment.GetEnvironmentVariable("PATH");
 
         if (string.IsNullOrEmpty(path))
         {
-            return null;
+            return [];
         }
 
         string[] directories = path.Split(
@@ -547,16 +577,34 @@ class Program
             {
                 string fileName = Path.GetFileName(file);
 
-                if (fileName.StartsWith(
+                if (!fileName.StartsWith(
                         prefix,
-                        StringComparison.Ordinal) &&
-                    IsExecutable(file))
+                        StringComparison.Ordinal))
                 {
-                    return fileName;
+                    continue;
+                }
+
+                if (IsExecutable(file))
+                {
+                    matches.Add(fileName);
                 }
             }
         }
 
-        return null;
+        return matches
+            .OrderBy(name => name, StringComparer.Ordinal)
+            .ToList();
+    }
+
+    static void Complete(StringBuilder input, string match)
+    {
+        string current = input.ToString();
+        string completion = match[current.Length..];
+
+        Console.Write(completion);
+        Console.Write(' ');
+
+        input.Append(completion);
+        input.Append(' ');
     }
 }
