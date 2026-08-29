@@ -1,7 +1,6 @@
 ﻿using System;
 using System.IO;
 using System.Linq;
-using System.Collections.Generic;
 using System.Text;
 
 public static class FilenameCompletion
@@ -17,30 +16,63 @@ public static class FilenameCompletion
             return false;
         }
 
-        string prefix = current[(lastSpace + 1)..];
+        string partialPath = current[(lastSpace + 1)..];
 
-        string? match = Directory
-            .EnumerateFiles(Environment.CurrentDirectory)
-            .Select(Path.GetFileName)
-            .Where(name =>
-                name != null &&
-                name.StartsWith(prefix, StringComparison.Ordinal))
-            .OrderBy(name => name, StringComparer.Ordinal)
-            .FirstOrDefault();
+        int lastSlash = partialPath.LastIndexOf('/');
 
-        if (match == null)
+        string directoryPath;
+        string prefix;
+
+        if (lastSlash == -1)
+        {
+            directoryPath = ".";
+            prefix = partialPath;
+        }
+        else
+        {
+            directoryPath = partialPath[..(lastSlash + 1)];
+            prefix = partialPath[(lastSlash + 1)..];
+        }
+
+        string searchDirectory = string.IsNullOrEmpty(directoryPath)
+            ? "."
+            : directoryPath;
+
+        try
+        {
+            string? match = Directory
+                .EnumerateFileSystemEntries(searchDirectory)
+                .Select(Path.GetFileName)
+                .Where(name =>
+                    name != null &&
+                    name.StartsWith(prefix, StringComparison.Ordinal))
+                .OrderBy(name => name, StringComparer.Ordinal)
+                .FirstOrDefault();
+
+            if (match == null)
+            {
+                return false;
+            }
+
+            string completedPath = directoryPath + match;
+
+            string completion = completedPath[partialPath.Length..];
+
+            Console.Write(completion);
+            Console.Write(' ');
+
+            input.Append(completion);
+            input.Append(' ');
+
+            return true;
+        }
+        catch (DirectoryNotFoundException)
         {
             return false;
         }
-
-        string completion = match[prefix.Length..];
-
-        Console.Write(completion);
-        Console.Write(' ');
-
-        input.Append(completion);
-        input.Append(' ');
-
-        return true;
+        catch (UnauthorizedAccessException)
+        {
+            return false;
+        }
     }
 }
