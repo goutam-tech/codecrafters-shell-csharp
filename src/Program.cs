@@ -11,9 +11,12 @@ class Program
     {
         while (true)
         {
-            Console.Write("$ ");
+            string input = ReadInput();
 
-            var input = Console.ReadLine();
+            if (string.IsNullOrWhiteSpace(input))
+            {
+                continue;
+            }
 
             if (string.IsNullOrWhiteSpace(input))
             {
@@ -425,5 +428,110 @@ class Program
         }
 
         return (arguments, outputFile, errorFile, outputAppend, errorAppend);
+    }
+
+    static string ReadInput()
+    {
+        Console.Write("$ ");
+
+        var input = new StringBuilder();
+
+        while (true)
+        {
+            ConsoleKeyInfo key = Console.ReadKey(intercept: true);
+
+            if(key.Key == ConsoleKey.Enter)
+            {
+                Console.WriteLine();
+                return input.ToString();
+            }
+
+            if (key.Key == ConsoleKey.Backspace)
+            {
+                if (input.Length > 0)
+                {
+                    input.Remove(input.Length - 1, 1);
+                    Console.Write("\b \b");
+                }
+
+                continue;
+            }
+
+            if (key.Key == ConsoleKey.Tab)
+            {
+                TryComplete(input);
+                continue;
+            }
+
+            //if (key.Key == ConsoleKey.Tab)
+            //{
+            //    string current = input.ToString();
+
+            //    if (current.StartsWith("ech", StringComparison.Ordinal) &&
+            //        !"echo".Equals(current, StringComparison.Ordinal))
+            //    {
+            //        string completed = "echo";
+
+            //        Console.Write(completed[current.Length..]);
+            //        Console.Write(" ");
+
+            //        input.Clear();
+            //        input.Append(completed);
+            //        input.Append(' ');
+            //    }
+            //    else if (current.StartsWith("exi", StringComparison.Ordinal) &&
+            //             !"exit".Equals(current, StringComparison.Ordinal))
+            //    {
+            //        string completed = "exit";
+
+            //        Console.Write(completed[current.Length..]);
+            //        Console.Write(" ");
+
+            //        input.Clear();
+            //        input.Append(completed);
+            //        input.Append(' ');
+            //    }
+
+            //    continue;
+            //}
+
+            if (!char.IsControl(key.KeyChar))
+            {
+                input.Append(key.KeyChar);
+                Console.Write(key.KeyChar);
+            }
+        }
+    }
+
+    static readonly string[] Builtins =
+    {
+        "echo",
+        "exit",
+        "pwd",
+        "cd",
+        "type"
+    };
+
+    static void TryComplete(StringBuilder input)
+    {
+        string current = input.ToString();
+
+        string? match = Builtins.FirstOrDefault(
+            builtin =>
+                builtin.StartsWith(current, StringComparison.Ordinal) &&
+                builtin != current
+        );
+
+        if (match == null)
+        {
+            return;
+        }
+
+        Console.Write(match[current.Length..]);
+        Console.Write(" ");
+
+        input.Clear();
+        input.Append(match);
+        input.Append(' ');
     }
 }
