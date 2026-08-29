@@ -484,18 +484,15 @@ class Program
     {
         string current = input.ToString();
 
-        string? match = null;
+        string? match = Builtins.FirstOrDefault(
+            builtin =>
+                builtin.StartsWith(current, StringComparison.Ordinal) &&
+                builtin != current
+        );
 
-        foreach(string builtin in Builtins)
-        {
-            if(builtin.StartsWith(current, StringComparison.Ordinal) && builtin != current)
-            {
-                match = builtin;
-                break;
-            }
-        }
+        match ??= FindExecutableCompletion(current);
 
-        if(match == null)
+        if (match == null)
         {
             Console.Write('\x07');
             return;
@@ -508,5 +505,58 @@ class Program
 
         input.Append(completion);
         input.Append(' ');
+    }
+
+    static string? FindExecutableCompletion(string prefix)
+    {
+        string? path = Environment.GetEnvironmentVariable("PATH");
+
+        if (string.IsNullOrEmpty(path))
+        {
+            return null;
+        }
+
+        string[] directories = path.Split(
+            Path.PathSeparator,
+            StringSplitOptions.RemoveEmptyEntries
+        );
+
+        foreach (string directory in directories)
+        {
+            if (!Directory.Exists(directory))
+            {
+                continue;
+            }
+
+            IEnumerable<string> files;
+
+            try
+            {
+                files = Directory.EnumerateFiles(directory);
+            }
+            catch (UnauthorizedAccessException)
+            {
+                continue;
+            }
+            catch (DirectoryNotFoundException)
+            {
+                continue;
+            }
+
+            foreach (string file in files)
+            {
+                string fileName = Path.GetFileName(file);
+
+                if (fileName.StartsWith(
+                        prefix,
+                        StringComparison.Ordinal) &&
+                    IsExecutable(file))
+                {
+                    return fileName;
+                }
+            }
+        }
+
+        return null;
     }
 }
