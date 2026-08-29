@@ -54,14 +54,29 @@ public static class FilenameCompletion
                 return false;
             }
 
-            // Only append the part that the user has not typed yet.
+            string fullPath = Path.Combine(
+                searchDirectory,
+                match
+            );
+
+            bool isDirectory = Directory.Exists(fullPath);
+
             string completion = match[prefix.Length..];
 
             Console.Write(completion);
-            Console.Write(' ');
 
             input.Append(completion);
-            input.Append(' ');
+
+            if (isDirectory)
+            {
+                Console.Write('/');
+                input.Append('/');
+            }
+            else
+            {
+                Console.Write(' ');
+                input.Append(' ');
+            }
 
             return true;
         }
