@@ -463,38 +463,6 @@ class Program
                 continue;
             }
 
-            //if (key.Key == ConsoleKey.Tab)
-            //{
-            //    string current = input.ToString();
-
-            //    if (current.StartsWith("ech", StringComparison.Ordinal) &&
-            //        !"echo".Equals(current, StringComparison.Ordinal))
-            //    {
-            //        string completed = "echo";
-
-            //        Console.Write(completed[current.Length..]);
-            //        Console.Write(" ");
-
-            //        input.Clear();
-            //        input.Append(completed);
-            //        input.Append(' ');
-            //    }
-            //    else if (current.StartsWith("exi", StringComparison.Ordinal) &&
-            //             !"exit".Equals(current, StringComparison.Ordinal))
-            //    {
-            //        string completed = "exit";
-
-            //        Console.Write(completed[current.Length..]);
-            //        Console.Write(" ");
-
-            //        input.Clear();
-            //        input.Append(completed);
-            //        input.Append(' ');
-            //    }
-
-            //    continue;
-            //}
-
             if (!char.IsControl(key.KeyChar))
             {
                 input.Append(key.KeyChar);
@@ -516,22 +484,29 @@ class Program
     {
         string current = input.ToString();
 
-        string? match = Builtins.FirstOrDefault(
-            builtin =>
-                builtin.StartsWith(current, StringComparison.Ordinal) &&
-                builtin != current
-        );
+        string? match = null;
 
-        if (match == null)
+        foreach(string builtin in Builtins)
         {
+            if(builtin.StartsWith(current, StringComparison.Ordinal) && builtin != current)
+            {
+                match = builtin;
+                break;
+            }
+        }
+
+        if(match == null)
+        {
+            Console.Write('\x07');
             return;
         }
 
-        Console.Write(match[current.Length..]);
-        Console.Write(" ");
+        string completion = match[current.Length..];
 
-        input.Clear();
-        input.Append(match);
+        Console.Write(completion);
+        Console.Write(' ');
+
+        input.Append(completion);
         input.Append(' ');
     }
 }
