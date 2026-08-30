@@ -456,6 +456,7 @@ class Program
                     Console.Write("\b \b");
                 }
 
+                FilenameCompletion.ResetTabState();
                 tabPressed = false;
                 continue;
             }
@@ -480,6 +481,8 @@ class Program
             {
                 input.Append(key.KeyChar);
                 Console.Write(key.KeyChar);
+
+                FilenameCompletion.ResetTabState();
 
                 tabPressed = false;
             }
