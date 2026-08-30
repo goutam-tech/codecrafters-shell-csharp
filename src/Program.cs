@@ -625,9 +625,9 @@ class Program
                 }
                 
 
-                FilenameCompletion.ResetTabState();
+                //FilenameCompletion.ResetTabState();
 
-                tabPressed = false;
+                //tabPressed = false;
             }
         }
     }
