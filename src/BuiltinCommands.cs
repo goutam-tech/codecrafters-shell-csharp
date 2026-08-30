@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Text;
 
 public static class BuiltinCommands
 {
@@ -50,7 +51,8 @@ public static class BuiltinCommands
         }
     }
 
-    public static string? RunCompleter(string command)
+    public static string? RunCompleter(string command,
+        string currentWord, string previousWord, string compLine)
     {
         if (!CompleteSpecs.TryGetValue(command, out string? scriptPath))
         {
@@ -65,6 +67,18 @@ public static class BuiltinCommands
             process.StartInfo.UseShellExecute = false;
             process.StartInfo.RedirectStandardOutput = true;
             process.StartInfo.CreateNoWindow = true;
+
+            process.StartInfo.ArgumentList.Add(command);
+
+            process.StartInfo.ArgumentList.Add(currentWord);
+
+            process.StartInfo.ArgumentList.Add(previousWord);
+
+            process.StartInfo.Environment["COMP_LINE"] = compLine;
+
+            int compPoint = Encoding.UTF8.GetByteCount(compLine);
+
+            process.StartInfo.Environment["COMP_POINT"] = compPoint.ToString();
 
             process.Start();
 
@@ -82,8 +96,13 @@ public static class BuiltinCommands
                 StringSplitOptions.RemoveEmptyEntries
                 )
                 .FirstOrDefault();
+              
+            if (candiate == null)
+            {
+                return string.Empty;
+            }
 
-            return candiate?.Trim();
+            return candiate.Trim();
         }
         catch
         {

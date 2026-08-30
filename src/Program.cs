@@ -468,20 +468,57 @@ class Program
 
                 if (current.Contains(' '))
                 {
-                    List<string> parts = current
+                    List<string> words = current
                         .Split(
                         ' ',
                         StringSplitOptions.RemoveEmptyEntries)
                         .ToList();
 
-                    if (parts.Count > 0)
+                    if (words.Count > 0)
                     {
-                        string command = parts[0];
+                        string command = words[0];
 
-                        string? candiate = BuiltinCommands.RunCompleter(command);
+                        int lastSpace = current.LastIndexOf(' ');
+
+                        string currentWord = current[(lastSpace + 1)..];
+
+                        string previousWord = "";
+
+                        if (words.Count >= 2)
+                        {
+                            if (string.IsNullOrEmpty(currentWord))
+                            {
+                                previousWord = words[^1];
+                            }
+                            else if (words.Count >= 2)
+                            {
+                                previousWord = words[^2];
+                            }
+                        }
+
+                        string? candiate = BuiltinCommands.RunCompleter(
+                            command,
+                            currentWord,
+                            previousWord,
+                            current);
 
                         if (candiate != null)
                         {
+                            if (candiate.Length == 0)
+                            {
+                                Console.Write('\x07');
+                                continue;
+                            }
+
+                            for (int i = 0; i < currentWord.Length; i++)
+                            {
+                                Console.Write("\b \b");
+                            }
+
+                            input.Remove(
+                                lastSpace + 1,
+                                currentWord.Length);
+
                             Console.Write(candiate);
                             Console.Write(' ');
 
