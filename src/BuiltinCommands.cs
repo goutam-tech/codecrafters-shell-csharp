@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.Linq;
 
 public static class BuiltinCommands
 {
@@ -45,6 +47,47 @@ public static class BuiltinCommands
             CompleteSpecs[command] = scriptPath;
 
             return;
+        }
+    }
+
+    public static string? RunCompleter(string command)
+    {
+        if (!CompleteSpecs.TryGetValue(command, out string? scriptPath))
+        {
+            return null;
+        }
+
+        try
+        {
+            var process = new Process();
+
+            process.StartInfo.FileName = scriptPath;
+            process.StartInfo.UseShellExecute = false;
+            process.StartInfo.RedirectStandardOutput = true;
+            process.StartInfo.CreateNoWindow = true;
+
+            process.Start();
+
+            string output = process.StandardOutput.ReadToEnd();
+
+            process.WaitForExit();
+
+            if (process.ExitCode != 0)
+            {
+                return null;
+            }
+
+            string? candiate = output.Split(
+                new[] { '\r', '\n' },
+                StringSplitOptions.RemoveEmptyEntries
+                )
+                .FirstOrDefault();
+
+            return candiate?.Trim();
+        }
+        catch
+        {
+            return null;
         }
     }
 }

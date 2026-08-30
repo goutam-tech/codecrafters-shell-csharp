@@ -468,13 +468,36 @@ class Program
 
                 if (current.Contains(' '))
                 {
-                    FilenameCompletion.TryComplete(input);
-                }
-                else
-                {
-                    TryComplete(input);
-                }
+                    List<string> parts = current
+                        .Split(
+                        ' ',
+                        StringSplitOptions.RemoveEmptyEntries)
+                        .ToList();
 
+                    if (parts.Count > 0)
+                    {
+                        string command = parts[0];
+
+                        string? candiate = BuiltinCommands.RunCompleter(command);
+
+                        if (candiate != null)
+                        {
+                            Console.Write(candiate);
+                            Console.Write(' ');
+
+                            input.Append(candiate);
+                            input.Append(' ');
+
+                            continue;
+                        }
+                    }
+                    FilenameCompletion.TryComplete(input);
+
+                    continue;
+                }
+                
+                TryComplete(input);
+                
                 continue;
             }
 
