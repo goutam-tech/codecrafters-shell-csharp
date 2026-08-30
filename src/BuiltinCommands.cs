@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Security.AccessControl;
 using System.Text;
 
 public static class BuiltinCommands
@@ -49,9 +50,23 @@ public static class BuiltinCommands
 
             return;
         }
+
+        if (arguments.Count >= 3 && arguments[1] == "-r")
+        {
+            string command = arguments[2];
+
+            CompleteSpecs.Remove(command);
+
+            return;
+        }
     }
 
-    public static string? RunCompleter(string command,
+    public static bool HasCompleter(string command)
+    {
+        return CompleteSpecs.ContainsKey(command);
+    }
+
+    public static List<string>? RunCompleter(string command,
         string currentWord, string previousWord, string compLine)
     {
         if (!CompleteSpecs.TryGetValue(command, out string? scriptPath))
@@ -76,9 +91,7 @@ public static class BuiltinCommands
 
             process.StartInfo.Environment["COMP_LINE"] = compLine;
 
-            int compPoint = Encoding.UTF8.GetByteCount(compLine);
-
-            process.StartInfo.Environment["COMP_POINT"] = compPoint.ToString();
+            process.StartInfo.Environment["COMP_POINT"] = Encoding.UTF8.GetByteCount(compLine).ToString();
 
             process.Start();
 
@@ -88,21 +101,18 @@ public static class BuiltinCommands
 
             if (process.ExitCode != 0)
             {
-                return null;
+                return new List<string>();
             }
 
-            string? candiate = output.Split(
-                new[] { '\r', '\n' },
-                StringSplitOptions.RemoveEmptyEntries
+            return output
+                .Split(
+                    new[] { '\r', '\n' },
+                    StringSplitOptions.RemoveEmptyEntries
                 )
-                .FirstOrDefault();
-              
-            if (candiate == null)
-            {
-                return string.Empty;
-            }
-
-            return candiate.Trim();
+                .Select(candidate => candidate.Trim())
+                .Where(candidate => candidate.Length > 0)
+                .OrderBy(candidate => candidate, StringComparer.Ordinal)
+                .ToList();
         }
         catch
         {

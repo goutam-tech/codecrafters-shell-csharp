@@ -8,6 +8,8 @@ using System.Text;
 class Program
 {
     static bool tabPressed = false;
+    private static string? completerTabCommand;
+    private static bool completerSecondTab;
     static void Main()
     {
         while (true)
@@ -457,8 +459,7 @@ class Program
                     Console.Write("\b \b");
                 }
 
-                FilenameCompletion.ResetTabState();
-                tabPressed = false;
+                ResetCompleterTabState();
                 continue;
             }
 
@@ -470,78 +471,159 @@ class Program
                 {
                     List<string> words = current
                         .Split(
-                        ' ',
-                        StringSplitOptions.RemoveEmptyEntries)
+                            ' ',
+                            StringSplitOptions.RemoveEmptyEntries
+                        )
                         .ToList();
 
                     if (words.Count > 0)
                     {
                         string command = words[0];
 
-                        int lastSpace = current.LastIndexOf(' ');
-
-                        string currentWord = current[(lastSpace + 1)..];
-
-                        string previousWord = "";
-
-                        if (words.Count >= 2)
+                        if (BuiltinCommands.HasCompleter(command))
                         {
-                            if (string.IsNullOrEmpty(currentWord))
-                            {
-                                previousWord = words[^1];
-                            }
-                            else if (words.Count >= 2)
-                            {
-                                previousWord = words[^2];
-                            }
-                        }
+                            int lastSpace = current.LastIndexOf(' ');
 
-                        string? candiate = BuiltinCommands.RunCompleter(
-                            command,
-                            currentWord,
-                            previousWord,
-                            current);
+                            string currentWord =
+                                current[(lastSpace + 1)..];
 
-                        if (candiate != null)
-                        {
-                            if (candiate.Length == 0)
+                            string previousWord = "";
+
+                            if (lastSpace > 0)
+                            {
+                                string beforeCurrent =
+                                    current[..lastSpace].TrimEnd();
+
+                                int previousSpace =
+                                    beforeCurrent.LastIndexOf(' ');
+
+                                previousWord =
+                                    previousSpace == -1
+                                        ? beforeCurrent
+                                        : beforeCurrent[(previousSpace + 1)..];
+                            }
+
+                            List<string>? candidates =
+                                BuiltinCommands.RunCompleter(
+                                    command,
+                                    currentWord,
+                                    previousWord,
+                                    current
+                                );
+
+                            if (candidates == null ||
+                                candidates.Count == 0)
                             {
                                 Console.Write('\x07');
+
+                                ResetCompleterTabState();
+
                                 continue;
                             }
 
-                            for (int i = 0; i < currentWord.Length; i++)
+                            if (candidates.Count == 1)
                             {
-                                Console.Write("\b \b");
+                                string candidate = candidates[0];
+
+                                string suffix;
+
+                                if (candidate.StartsWith(
+                                        currentWord,
+                                        StringComparison.Ordinal))
+                                {
+                                    suffix = candidate[currentWord.Length..];
+                                }
+                                else
+                                {
+                                    suffix = candidate;
+                                }
+
+                                for (int i = 0; i < currentWord.Length; i++)
+                                {
+                                    Console.Write("\b \b");
+                                }
+
+                                input.Remove(
+                                    lastSpace + 1,
+                                    currentWord.Length
+                                );
+
+                                Console.Write(candidate);
+                                Console.Write(' ');
+
+                                input.Append(candidate);
+                                input.Append(' ');
+
+                                ResetCompleterTabState();
+
+                                continue;
                             }
 
-                            input.Remove(
-                                lastSpace + 1,
-                                currentWord.Length);
+                            string commonPrefix =
+                                FindLongestCommonPrefix(candidates);
 
-                            Console.Write(candiate);
-                            Console.Write(' ');
+                            if (commonPrefix.Length > currentWord.Length)
+                            {
+                                string completion =
+                                    commonPrefix[currentWord.Length..];
 
-                            input.Append(candiate);
-                            input.Append(' ');
+                                Console.Write(completion);
+
+                                input.Append(completion);
+
+                                ResetCompleterTabState();
+
+                                continue;
+                            }
+
+                            if (completerTabCommand != command)
+                            {
+                                completerTabCommand = command;
+                                completerSecondTab = false;
+                            }
+
+                            if (!completerSecondTab)
+                            {
+                                Console.Write('\x07');
+
+                                completerSecondTab = true;
+
+                                continue;
+                            }
+
+                            Console.WriteLine();
+
+                            Console.WriteLine(
+                                string.Join(
+                                    "  ",
+                                    candidates
+                                )
+                            );
+
+                            Console.Write("$ ");
+                            Console.Write(input.ToString());
+
+                            ResetCompleterTabState();
 
                             continue;
                         }
                     }
+
                     FilenameCompletion.TryComplete(input);
 
                     continue;
                 }
-                
-                TryComplete(input);
-                
-                continue;
-            }
 
-            if (!char.IsControl(key.KeyChar))
-            {
-                input.Append(key.KeyChar);
-                Console.Write(key.KeyChar);
+                if (!char.IsControl(key.KeyChar))
+                {
+                    input.Append(key.KeyChar);
+                    Console.Write(key.KeyChar);
+
+                    ResetCompleterTabState();
+
+                    continue;
+                }
+                
 
                 FilenameCompletion.ResetTabState();
 
@@ -550,20 +632,11 @@ class Program
         }
     }
 
-    static readonly string[] Builtins =
-    {
-        "echo",
-        "exit",
-        "pwd",
-        "cd",
-        "type"
-    };
-
     static void TryComplete(StringBuilder input)
     {
         string current = input.ToString();
 
-        string? builtinMatch = Builtins.FirstOrDefault(
+        string? builtinMatch = BuiltinCommands.Commands.FirstOrDefault(
             builtin =>
                 builtin.StartsWith(current, StringComparison.Ordinal) &&
                 builtin != current
@@ -695,22 +768,26 @@ class Program
         input.Append(' ');
     }
 
-    static string FindLongestCommonPrefix(List<string> matches)
+    private static string FindLongestCommonPrefix(List<string> candidates)
     {
-        if(matches.Count == 0)
+        if (candidates.Count == 0)
         {
             return string.Empty;
         }
 
-        string prefix = matches[0];
+        string prefix = candidates[0];
 
-        for(int i = 1; i < matches.Count; i++)
+        for (int i = 1; i < candidates.Count; i++)
         {
-            int length = Math.Min(prefix.Length, matches[i].Length);
+            int length = Math.Min(
+                prefix.Length,
+                candidates[i].Length
+            );
 
             int j = 0;
 
-            while (j < length && prefix[j] == matches[i][j])
+            while (j < length &&
+                   prefix[j] == candidates[i][j])
             {
                 j++;
             }
@@ -724,5 +801,11 @@ class Program
         }
 
         return prefix;
+    }
+
+    private static void ResetCompleterTabState()
+    {
+        completerTabCommand = null;
+        completerSecondTab = false;
     }
 }
