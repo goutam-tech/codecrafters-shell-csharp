@@ -31,6 +31,19 @@ class Program
                 continue;
             }
 
+            bool isBackground = false;
+
+            if (parts[^1] == "&")
+            {
+                isBackground = true;
+                parts.RemoveAt(parts.Count - 1);
+
+                if (parts.Count == 0)
+                {
+                    continue;
+                }
+            }
+
             var (
                 arguments,
                 outputFile,
@@ -133,6 +146,13 @@ class Program
 
             if (command == "jobs")
             {
+                JobManager.PrintJobs();
+                continue;
+            }
+
+            if (isBackground)
+            {
+                ExecuteBackgroundCommand(arguments);
                 continue;
             }
 
@@ -1019,5 +1039,45 @@ class Program
     {
         completerTabCommand = null;
         completerSecondTab = false;
+    }
+
+    static void ExecuteBackgroundCommand(List<string> parts)
+    {
+        string command = parts[0];
+
+        string? executable = FindExecutable(command);
+
+        if (executable == null)
+        {
+            Console.WriteLine($"{command}: command not found");
+            return;
+        }
+
+        var process = new Process();
+
+        process.StartInfo.FileName = "/bin/bash";
+        process.StartInfo.UseShellExecute = false;
+
+        process.StartInfo.ArgumentList.Add("-c");
+
+        process.StartInfo.ArgumentList.Add(
+            "exec -a \"$0\" \"$1\" \"${@:2}\""
+        );
+
+        process.StartInfo.ArgumentList.Add(command);
+        process.StartInfo.ArgumentList.Add(executable);
+
+        for (int i = 1; i < parts.Count; i++)
+        {
+            process.StartInfo.ArgumentList.Add(parts[i]);
+        }
+
+        process.Start();
+
+        string commandString = string.Join(" ", parts);
+
+        Job job = JobManager.AddJob(process.Id, commandString);
+
+        Console.WriteLine($"[{job.JobNumber}] {process.Id}");
     }
 }
