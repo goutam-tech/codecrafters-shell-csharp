@@ -131,6 +131,11 @@ class Program
                 continue;
             }
 
+            if (command == "jobs")
+            {
+                continue;
+            }
+
             ExecuteExternalCommand(
                 arguments,
                 outputFile,
