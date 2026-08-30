@@ -102,6 +102,11 @@ class Program
                 HandleType(parts[1]);
             }
 
+            else if (command == "complete")
+            {
+                BuiltinCommands.HandleComplete(arguments);
+            }
+
             else
             {
                 ExecuteExternalCommand(arguments, outputFile, errorFile, outputAppend, errorAppend);

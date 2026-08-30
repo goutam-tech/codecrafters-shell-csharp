@@ -16,4 +16,14 @@ public static class BuiltinCommands
     {
         return Commands.Contains(command);
     }
+
+    public static void HandleComplete(List<string> arguments)
+    {
+        if (arguments.Count >= 3 && arguments[1] == "-p")
+        {
+            string command = arguments[2];
+
+            Console.WriteLine($"complete: {command}: no completion specification");
+        }
+    }
 }
