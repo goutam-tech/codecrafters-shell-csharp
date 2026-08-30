@@ -1,5 +1,4 @@
-﻿// New file: JobManager.cs
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using System;
 using System.Diagnostics;
@@ -7,7 +6,6 @@ using System.Diagnostics;
 public static class JobManager
 {
     private static readonly List<Job> jobs = new();
-    //private static int nextJobNumber = 1;
 
     public static Job AddJob(Process process, string command)
     {
@@ -31,9 +29,14 @@ public static class JobManager
     {
         foreach (Job job in jobs)
         {
-            if (job.Status == "Running" && job.Process.HasExited)
+            if (job.Status == "Running")
             {
-                job.Status = "Done";
+                job.Process.Refresh();
+
+                if (job.Process.HasExited)
+                {
+                    job.Status = "Done";
+                }
             }
         }
     }
