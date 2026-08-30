@@ -17,6 +17,8 @@ class Program
     {
         while (true)
         {
+            JobManager.ReapExitedJobs();
+
             string input = ReadInput();
 
             if (string.IsNullOrWhiteSpace(input))
@@ -638,15 +640,6 @@ class Program
         int lastSpace =
             current.LastIndexOf(' ');
 
-        /*
-         * A registered completer is only triggered after
-         * the command and a space.
-         *
-         * Example:
-         *
-         * git <TAB>
-         * git re<TAB>
-         */
         if (lastSpace < 0)
         {
             Console.Write('\x07');
@@ -1076,7 +1069,7 @@ class Program
 
         string commandString = string.Join(" ", parts);
 
-        Job job = JobManager.AddJob(process.Id, commandString);
+        Job job = JobManager.AddJob(process, commandString);
 
         Console.WriteLine($"[{job.JobNumber}] {process.Id}");
     }
