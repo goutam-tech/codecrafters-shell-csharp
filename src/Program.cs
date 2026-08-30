@@ -111,11 +111,7 @@ class Program
 
     static void HandleType(string command)
     {
-        if (command == "echo" ||
-            command == "exit" ||
-            command == "type" ||
-            command == "pwd" ||
-            command == "cd")
+        if (BuiltinCommands.IsBuiltin(command))
         {
             Console.WriteLine($"{command} is a shell builtin");
             return;
