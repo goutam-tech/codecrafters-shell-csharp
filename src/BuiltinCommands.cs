@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 
 public static class BuiltinCommands
 {
@@ -12,6 +13,8 @@ public static class BuiltinCommands
         "complete"
     };
 
+    public static readonly Dictionary<string, string> CompleteSpecs = new();
+
     public static bool IsBuiltin(string command)
     {
         return Commands.Contains(command);
@@ -23,7 +26,25 @@ public static class BuiltinCommands
         {
             string command = arguments[2];
 
-            Console.WriteLine($"complete: {command}: no completion specification");
+            if (CompleteSpecs.TryGetValue(command, out string? scriptPath))
+            {
+                Console.WriteLine($"complete -C '{scriptPath}' {command}");
+            }
+
+            else
+            {
+                Console.WriteLine($"complete: {command}: no completion specification");
+            }
+            return;
+        }
+        if (arguments.Count >= 4 && arguments[1] == "-C")
+        {
+            string scriptPath = arguments[2];
+            string command = arguments[3];
+
+            CompleteSpecs[command] = scriptPath;
+
+            return;
         }
     }
 }
