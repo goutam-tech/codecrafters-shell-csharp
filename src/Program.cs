@@ -23,7 +23,13 @@ class Program
         {
             JobManager.ReapExitedJobs();
 
-            string input = ReadInput();
+            string? input = ReadInput();
+
+            if (input == null)
+            {
+                HistoryManager.SaveHistFileOnExit();
+                break;
+            }
 
             if (string.IsNullOrWhiteSpace(input))
             {
@@ -75,6 +81,13 @@ class Program
 
             if (command == "exit")
             {
+                HistoryManager.SaveHistFileOnExit();
+
+                if (arguments.Count >= 2 && int.TryParse(arguments[1], out int exitCode))
+                {
+                    Environment.Exit(exitCode);
+                }
+
                 break;
             }
 
