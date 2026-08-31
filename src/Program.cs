@@ -25,7 +25,7 @@ class Program
 
             if (string.IsNullOrWhiteSpace(input))
             {
-                continue;
+                HistoryManager.Add(input);
             }
 
             List<string> parts = ParseCommand(input);
@@ -162,6 +162,14 @@ class Program
 
             if (command == "history")
             {
+                int? limit = null;
+
+                if (arguments.Count >= 2 && int.TryParse(arguments[1], out int n))
+                {
+                    limit = n;
+                }
+
+                HistoryManager.Print(limit);
                 continue;
             }
 
@@ -549,6 +557,8 @@ class Program
 
         var input = new StringBuilder();
 
+        int historyIndex = HistoryManager.Count;
+
         while (true)
         {
             ConsoleKeyInfo key =
@@ -562,6 +572,35 @@ class Program
                 ResetCompleterTabState();
 
                 return input.ToString();
+            }
+
+            if (key.Key == ConsoleKey.UpArrow)
+            {
+                if (historyIndex > 0)
+                {
+                    historyIndex--;
+
+                    ReplaceInputLine(input, HistoryManager.GetAt(historyIndex + 1));
+                }
+                continue;
+            }
+
+            if (key.Key == ConsoleKey.DownArrow)
+            {
+                if (historyIndex < HistoryManager.Count - 1)
+                {
+                    historyIndex++;
+
+                    ReplaceInputLine(input, HistoryManager.GetAt(historyIndex + 1));
+                }
+                else if (historyIndex == HistoryManager.Count - 1)
+                {
+                    historyIndex++;
+
+                    ReplaceInputLine(input, "");
+                }
+
+                continue;
             }
 
             if (key.Key == ConsoleKey.Backspace)
@@ -1400,5 +1439,18 @@ class Program
             stdoutTarget?.Dispose();
             fileStream?.Dispose();
         }
+    }
+
+    static void ReplaceInputLine(StringBuilder input, string replacement)
+    {
+        for (int i = 0; i < input.Length; i++)
+        {
+            Console.Write("\b \b");
+        }
+
+        input.Clear();
+        input.Append(replacement);
+
+        Console.Write(replacement);
     }
 }
