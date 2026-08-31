@@ -25,8 +25,10 @@ class Program
 
             if (string.IsNullOrWhiteSpace(input))
             {
-                HistoryManager.Add(input);
+                continue;    
             }
+
+            HistoryManager.Add(input);
 
             List<string> parts = ParseCommand(input);
 
