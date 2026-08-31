@@ -207,6 +207,12 @@ class Program
                 HistoryManager.Print(limit);
                 continue;
             }
+            
+            if (command == "declare")
+            {
+                HandleDeclare(arguments);
+                continue;
+            }
 
             if (isBackground)
             {
@@ -1487,5 +1493,53 @@ class Program
         input.Append(replacement);
 
         Console.Write(replacement);
+    }
+
+    static void HandleDeclare(List<string> arguments)
+    {
+        if (arguments.Count >= 3 && arguments[1] == "-p")
+        {
+            string name = arguments[2];
+
+            if (ShellVariables.TryGet(name, out string value))
+            {
+                Console.WriteLine($"declare -- {name}=\"{value}\"");
+            }
+            else
+            {
+                Console.WriteLine($"declare: {name}: not found");
+            }
+
+            return;
+        }
+
+        for (int i = 1; i < arguments.Count; i++)
+        {
+            string arg = arguments[i];
+
+            int equalsIndex = arg.IndexOf('=');
+
+            string name;
+            string value;
+
+            if (equalsIndex == -1)
+            {
+                name = arg;
+                value = "";
+            }
+            else
+            {
+                name = arg[..equalsIndex];
+                value = arg[(equalsIndex + 1)..];
+            }
+
+            if (!ShellVariables.IsValidIdentifier(name))
+            {
+                Console.WriteLine($"declare: `{arg}': not a valid identifier");
+                continue;
+            }
+
+            ShellVariables.Set(name, value);
+        }
     }
 }
