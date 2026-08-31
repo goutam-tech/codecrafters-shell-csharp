@@ -1162,7 +1162,7 @@ class Program
 
         string commandString = string.Join(" ", parts);
 
-        Job job = JobManager.AddJob(process, commandString);
+        JobManager.Job job = JobManager.AddJob(process, commandString);
 
         Console.WriteLine($"[{job.JobNumber}] {process.Id}");
     }
