@@ -1220,9 +1220,19 @@ class Program
 
                         backgroundTasks.Add(Task.Run(async () =>
                         {
-                            await input.CopyToAsync(stdin.BaseStream);
-                            input.Dispose();
-                            stdin.Close();
+                            try
+                            {
+                                await input.CopyToAsync(stdin.BaseStream);
+                            }
+                            catch (IOException) { }
+                            catch (Exception) { }
+                            finally
+                            {
+                                input.Dispose();
+
+                                try { stdin.Close(); }
+                                catch (Exception) { }
+                            }
                         }));
                     }
 
@@ -1242,14 +1252,22 @@ class Program
                                 await source.CopyToAsync(fileStream);
                             }));
                         }
-                        else if (stdoutTarget != null)
+                        if (stdoutTarget != null)
                         {
                             Stream target = stdoutTarget;
 
                             backgroundTasks.Add(Task.Run(async () =>
                             {
-                                await source.CopyToAsync(target);
-                                target.Dispose();
+                                try
+                                {
+                                    await source.CopyToAsync(target);
+                                }
+                                catch (IOException) { }
+                                catch (Exception) { }
+                                finally
+                                {
+                                    target.Dispose();
+                                }
                             }));
                         }
                     }
@@ -1359,10 +1377,23 @@ class Program
         finally
         {
             Console.SetOut(originalOut);
+
+            if (previousOutput != null)
+            {
+                try
+                {
+                    var buffer = new byte[4096];
+                    while (previousOutput.Read(buffer, 0, buffer.Length) > 0) { }
+                }
+                catch (Exception) { }
+                finally
+                {
+                    previousOutput.Dispose();
+                }
+            }
+
             stdoutTarget?.Dispose();
             fileStream?.Dispose();
         }
     }
-
-
 }
