@@ -1,117 +1,143 @@
-﻿using System.Collections.Generic;
+﻿// JobManager.cs — full replacement (polling only, no Exited event)
+using System.Collections.Generic;
 using System.Linq;
 using System;
 using System.Diagnostics;
 
 public static class JobManager
 {
+    public class Job
+    {
+        public int JobNumber { get; set; }
+        public int ProcessId { get; set; }
+        public string Command { get; set; } = "";
+        public string Status { get; set; } = "Running";
+        public Process Process { get; set; } = null!;
+    }
+
     private static readonly List<Job> jobs = new();
-    private static readonly object jobsLock = new();
 
     public static Job AddJob(Process process, string command)
     {
-        lock (jobsLock)
+        int jobNumber = jobs.Count == 0
+            ? 1
+            : jobs.Max(j => j.JobNumber) + 1;
+
+        var job = new Job
         {
-            int jobNumber = jobs.Count == 0
-                ? 1
-                : jobs.Max(j => j.JobNumber) + 1;
+            JobNumber = jobNumber,
+            ProcessId = process.Id,
+            Command = command,
+            Status = "Running",
+            Process = process
+        };
 
-            var job = new Job
+        jobs.Add(job);
+
+        return job;
+    }
+
+    private static void MarkExited()
+    {
+        foreach (Job job in jobs)
+        {
+            if (job.Status != "Running")
             {
-                JobNumber = jobNumber,
-                ProcessId = process.Id,
-                Command = command,
-                Status = "Running",
-                Process = process
-            };
+                continue;
+            }
 
-            jobs.Add(job);
+            bool exited;
 
-            process.EnableRaisingEvents = true;
-
-            process.Exited += (sender, args) =>
+            try
             {
-                lock (jobsLock)
+                // WaitForExit(0) forces a real, non-cached exit check
+                // (unlike HasExited, which can read a stale cached value).
+                exited = job.Process.WaitForExit(0);
+
+                if (!exited)
                 {
-                    if (job.Status == "Running")
-                    {
-                        job.Status = "Done";
-                    }
+                    job.Process.Refresh();
+                    exited = job.Process.HasExited;
                 }
-            };
+            }
+            catch
+            {
+                exited = true;
+            }
 
-            return job;
+            if (exited)
+            {
+                job.Status = "Done";
+            }
         }
     }
 
     public static void PrintJobs()
     {
-        lock (jobsLock)
+        MarkExited();
+
+        List<Job> snapshot = jobs.OrderBy(j => j.JobNumber).ToList();
+
+        int currentJobNumber = snapshot.Count > 0 ? snapshot[^1].JobNumber : -1;
+        int previousJobNumber = snapshot.Count > 1 ? snapshot[^2].JobNumber : -1;
+
+        foreach (Job job in snapshot)
         {
-            List<Job> snapshot = jobs.OrderBy(j => j.JobNumber).ToList();
+            char marker = ' ';
 
-            int currentJobNumber = snapshot.Count > 0 ? snapshot[^1].JobNumber : -1;
-            int previousJobNumber = snapshot.Count > 1 ? snapshot[^2].JobNumber : -1;
-
-            foreach (Job job in snapshot)
+            if (job.JobNumber == currentJobNumber)
             {
-                char marker = ' ';
-
-                if (job.JobNumber == currentJobNumber)
-                {
-                    marker = '+';
-                }
-                else if (job.JobNumber == previousJobNumber)
-                {
-                    marker = '-';
-                }
-
-                string status = job.Status.PadRight(24);
-
-                string commandDisplay = job.Status == "Running"
-                    ? job.Command + " &"
-                    : job.Command;
-
-                Console.WriteLine($"[{job.JobNumber}]{marker}  {status}{commandDisplay}");
+                marker = '+';
+            }
+            else if (job.JobNumber == previousJobNumber)
+            {
+                marker = '-';
             }
 
-            jobs.RemoveAll(j => j.Status == "Done");
+            string status = job.Status.PadRight(24);
+
+            string commandDisplay = job.Status == "Running"
+                ? job.Command + " &"
+                : job.Command;
+
+            Console.WriteLine($"[{job.JobNumber}]{marker}  {status}{commandDisplay}");
         }
+
+        jobs.RemoveAll(j => j.Status == "Done");
     }
 
     public static void ReapExitedJobs()
     {
-        lock (jobsLock)
+        MarkExited();
+
+        List<Job> snapshot = jobs.OrderBy(j => j.JobNumber).ToList();
+
+        int currentJobNumber = snapshot.Count > 0 ? snapshot[^1].JobNumber : -1;
+        int previousJobNumber = snapshot.Count > 1 ? snapshot[^2].JobNumber : -1;
+
+        foreach (Job job in snapshot)
         {
-            List<Job> snapshot = jobs.OrderBy(j => j.JobNumber).ToList();
-
-            int currentJobNumber = snapshot.Count > 0 ? snapshot[^1].JobNumber : -1;
-            int previousJobNumber = snapshot.Count > 1 ? snapshot[^2].JobNumber : -1;
-
-            foreach (Job job in snapshot)
+            if (job.Status != "Done")
             {
-                if (job.Status != "Done")
-                {
-                    continue;
-                }
-
-                char marker = ' ';
-
-                if (job.JobNumber == currentJobNumber)
-                {
-                    marker = '+';
-                }
-                else if (job.JobNumber == previousJobNumber)
-                {
-                    marker = '-';
-                }
-
-                string status = job.Status.PadRight(24);
-
-                Console.WriteLine($"[{job.JobNumber}]{marker}  {status}{job.Command}");
+                continue;
             }
 
-            jobs.RemoveAll(j => j.Status == "Done");
+            char marker = ' ';
+
+            if (job.JobNumber == currentJobNumber)
+            {
+                marker = '+';
+            }
+            else if (job.JobNumber == previousJobNumber)
+            {
+                marker = '-';
+            }
+
+            string status = job.Status.PadRight(24);
+
+            Console.WriteLine($"[{job.JobNumber}]{marker}  {status}{job.Command}");
         }
+
+        jobs.RemoveAll(j => j.Status == "Done");
     }
 }
