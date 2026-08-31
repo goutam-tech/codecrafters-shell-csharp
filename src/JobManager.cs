@@ -6,116 +6,112 @@ using System.Diagnostics;
 public static class JobManager
 {
     private static readonly List<Job> jobs = new();
+    private static readonly object jobsLock = new();
 
     public static Job AddJob(Process process, string command)
     {
-        int jobNumber = jobs.Count == 0 ? 1 : jobs.Max(j => j.JobNumber) + 1;
-
-        var job = new Job
+        lock (jobsLock)
         {
-            JobNumber = jobNumber,
-            ProcessId = process.Id,
-            Command = command,
-            Status = "Running",
-            Process = process
-        };
+            int jobNumber = jobs.Count == 0
+                ? 1
+                : jobs.Max(j => j.JobNumber) + 1;
 
-        jobs.Add(job);
-
-        return job;
-    }
-
-    private static void MarkExited()
-    {
-        foreach (Job job in jobs)
-        {
-            if (job.Status == "Running")
+            var job = new Job
             {
-                continue;
-            }
+                JobNumber = jobNumber,
+                ProcessId = process.Id,
+                Command = command,
+                Status = "Running",
+                Process = process
+            };
 
-            try
+            jobs.Add(job);
+
+            process.EnableRaisingEvents = true;
+
+            process.Exited += (sender, args) =>
             {
-                job.Process.Refresh();
-
-                if (job.Process.HasExited)
+                lock (jobsLock)
                 {
-                    job.Status = "Done";
+                    if (job.Status == "Running")
+                    {
+                        job.Status = "Done";
+                    }
                 }
-            }
-            catch
-            {
-                job.Status = "Done";
-            }
+            };
+
+            return job;
         }
     }
 
     public static void PrintJobs()
     {
-        MarkExited();
-
-        List<Job> snapshot = jobs.OrderBy(j => j.JobNumber).ToList();
-
-        int currentJobNumber = snapshot.Count > 0 ? jobs[^1].JobNumber : -1;
-        int previousJobNumber = snapshot.Count > 1 ? jobs[^2].JobNumber : -1;
-
-        foreach (Job job in snapshot)
+        lock (jobsLock)
         {
-            char marker = ' ';
+            List<Job> snapshot = jobs.OrderBy(j => j.JobNumber).ToList();
 
-            if (job.JobNumber == currentJobNumber)
+            int currentJobNumber = snapshot.Count > 0 ? snapshot[^1].JobNumber : -1;
+            int previousJobNumber = snapshot.Count > 1 ? snapshot[^2].JobNumber : -1;
+
+            foreach (Job job in snapshot)
             {
-                marker = '+';
+                char marker = ' ';
+
+                if (job.JobNumber == currentJobNumber)
+                {
+                    marker = '+';
+                }
+                else if (job.JobNumber == previousJobNumber)
+                {
+                    marker = '-';
+                }
+
+                string status = job.Status.PadRight(24);
+
+                string commandDisplay = job.Status == "Running"
+                    ? job.Command + " &"
+                    : job.Command;
+
+                Console.WriteLine($"[{job.JobNumber}]{marker}  {status}{commandDisplay}");
             }
-            else if (job.JobNumber == previousJobNumber)
-            {
-                marker = '-';
-            }
 
-            string status = job.Status.PadRight(24);
-
-            string commandDisplay = job.Status == "Running" ? job.Command + " &" : job.Command;
-
-            Console.WriteLine(
-                $"[{job.JobNumber}]{marker}  {status}{commandDisplay}");
+            jobs.RemoveAll(j => j.Status == "Done");
         }
-
-        jobs.RemoveAll(j => j.Status == "Done");
     }
 
     public static void ReapExitedJobs()
     {
-        MarkExited();
-
-        List<Job> snapshot = jobs.OrderBy(j => j.JobNumber).ToList();
-
-        int currentJobNumber = snapshot.Count > 0 ? jobs[^1].JobNumber : -1;
-        int previousJobNumber = snapshot.Count > 1 ? jobs[^2].JobNumber : -1;
-
-        foreach (Job job in snapshot)
+        lock (jobsLock)
         {
-            if (job.Status != "Done")
+            List<Job> snapshot = jobs.OrderBy(j => j.JobNumber).ToList();
+
+            int currentJobNumber = snapshot.Count > 0 ? snapshot[^1].JobNumber : -1;
+            int previousJobNumber = snapshot.Count > 1 ? snapshot[^2].JobNumber : -1;
+
+            foreach (Job job in snapshot)
             {
-                continue;
+                if (job.Status != "Done")
+                {
+                    continue;
+                }
+
+                char marker = ' ';
+
+                if (job.JobNumber == currentJobNumber)
+                {
+                    marker = '+';
+                }
+                else if (job.JobNumber == previousJobNumber)
+                {
+                    marker = '-';
+                }
+
+                string status = job.Status.PadRight(24);
+
+                Console.WriteLine($"[{job.JobNumber}]{marker}  {status}{job.Command}");
             }
 
-            char marker = ' ';
-
-            if (job.JobNumber == currentJobNumber)
-            {
-                marker = '+';
-            }
-            else if (job.JobNumber == previousJobNumber)
-            {
-                marker = '-';
-            }
-
-            string status = job.Status.PadRight(24);
-
-            Console.WriteLine(
-                $"[{job.JobNumber}]{marker}  {status}{job.Command}");
+            jobs.RemoveAll(j => j.Status == "Done");
         }
-
-        jobs.RemoveAll(j => j.Status == "Done");
     }
 }
