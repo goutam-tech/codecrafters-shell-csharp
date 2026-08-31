@@ -164,6 +164,24 @@ class Program
 
             if (command == "history")
             {
+                if (arguments.Count >= 3 && arguments[1] == "-r")
+                {
+                    HistoryManager.ReadFromFile(arguments[2]);
+                    continue;
+                }
+
+                if (arguments.Count >= 3 && arguments[1] == "-w")
+                {
+                    HistoryManager.WriteToFile(arguments[2]);
+                    continue;
+                }
+
+                if (arguments.Count >= 3 && arguments[1] == "-a")
+                {
+                    HistoryManager.AppendToFile(arguments[2]);
+                    continue;
+                }
+
                 int? limit = null;
 
                 if (arguments.Count >= 2 && int.TryParse(arguments[1], out int n))
