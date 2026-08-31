@@ -17,6 +17,8 @@ class Program
 
     static void Main()
     {
+        HistoryManager.LoadHistFileOnStartup();
+
         while (true)
         {
             JobManager.ReapExitedJobs();
