@@ -31,12 +31,21 @@ public static class JobManager
         {
             if (job.Status == "Running")
             {
+                continue;
+            }
+
+            try
+            {
                 job.Process.Refresh();
 
                 if (job.Process.HasExited)
                 {
                     job.Status = "Done";
                 }
+            }
+            catch
+            {
+                job.Status = "Done";
             }
         }
     }
