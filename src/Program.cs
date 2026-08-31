@@ -160,6 +160,11 @@ class Program
                 continue;
             }
 
+            if (command == "history")
+            {
+                continue;
+            }
+
             if (isBackground)
             {
                 ExecuteBackgroundCommand(arguments);

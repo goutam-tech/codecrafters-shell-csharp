@@ -15,7 +15,8 @@ public static class BuiltinCommands
         "cd",
         "type",
         "complete",
-        "jobs"
+        "jobs",
+        "history"
     };
 
     public static readonly Dictionary<string, string> CompleteSpecs = new();
