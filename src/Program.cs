@@ -5,6 +5,8 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using static System.Net.Mime.MediaTypeNames;
+using System.IO.Pipes;
+using System.Threading.Tasks;
 
 class Program
 {
@@ -30,6 +32,12 @@ class Program
 
             if (parts.Count == 0)
             {
+                continue;
+            }
+
+            if (parts.Contains("|"))
+            {
+                ExecutePipeline(parts);
                 continue;
             }
 
@@ -1073,4 +1081,288 @@ class Program
 
         Console.WriteLine($"[{job.JobNumber}] {process.Id}");
     }
+
+    static List<List<string>> SplitPipeline(List<string> parts)
+    {
+        var stages = new List<List<string>>();
+        var current = new List<string>();
+
+        foreach (string part in parts)
+        {
+            if (part == "|")
+            {
+                stages.Add(current);
+                current = new List<string>();
+            }
+
+            else
+            {
+                current.Add(part);
+            }
+        }
+        stages.Add(current);
+
+        return stages;
+    }
+
+    static (Stream wirteEnd, Stream readEnd) CreatePipe()
+    {
+        var server = new AnonymousPipeServerStream(PipeDirection.In, HandleInheritability.None);
+        var client = new AnonymousPipeClientStream(PipeDirection.Out, server.ClientSafePipeHandle);
+
+        return (client, server);
+    }
+
+    static void ExecutePipeline(List<string> parts)
+    {
+        List<List<string>> stages = SplitPipeline(parts);
+
+        int n = stages.Count;
+        Stream? previousOutput = null;
+
+        var externalProcesses = new List<Process>();
+        var backgroundTasks = new List<Task>();
+
+        for (int i = 0; i < n; i++)
+        {
+            List<string> stageParts = stages[i];
+
+            var (arguments, outputFile, errorFile, outputAppend, errorAppend) =
+                ParseRedirection(stageParts);
+
+            if (arguments.Count == 0)
+            {
+                previousOutput?.Dispose();
+                previousOutput = null;
+                continue;
+            }
+
+            string command = arguments[0];
+            bool isLast = i == n - 1;
+
+            Stream? stdoutTarget = null;
+            Stream? nextInput = null;
+
+            if (!isLast)
+            {
+                var (writeEnd, readEnd) = CreatePipe();
+                stdoutTarget = writeEnd;
+                nextInput = readEnd;
+            }
+
+            if (BuiltinCommands.IsBuiltin(command))
+            {
+                RunBuiltinInPipeline(
+                    command,
+                    arguments,
+                    stageParts,
+                    previousOutput,
+                    stdoutTarget,
+                    isLast,
+                    outputFile,
+                    outputAppend
+                );
+
+                previousOutput?.Dispose();
+            }
+            else
+            {
+                string? executable = FindExecutable(command);
+
+                if (executable == null)
+                {
+                    Console.WriteLine($"{command}: command not found");
+
+                    previousOutput?.Dispose();
+                    stdoutTarget?.Dispose();
+                }
+                else
+                {
+                    var process = new Process();
+
+                    process.StartInfo.FileName = "/bin/bash";
+                    process.StartInfo.UseShellExecute = false;
+
+                    process.StartInfo.ArgumentList.Add("-c");
+                    process.StartInfo.ArgumentList.Add("exec -a \"$0\" \"$1\" \"${@:2}\"");
+                    process.StartInfo.ArgumentList.Add(command);
+                    process.StartInfo.ArgumentList.Add(executable);
+
+                    for (int a = 1; a < arguments.Count; a++)
+                    {
+                        process.StartInfo.ArgumentList.Add(arguments[a]);
+                    }
+
+                    bool needsStdinRedirect = previousOutput != null;
+                    bool needsStdoutRedirect = !isLast || outputFile != null;
+
+                    if (needsStdinRedirect)
+                    {
+                        process.StartInfo.RedirectStandardInput = true;
+                    }
+
+                    if (needsStdoutRedirect)
+                    {
+                        process.StartInfo.RedirectStandardOutput = true;
+                    }
+
+                    if (errorFile != null)
+                    {
+                        process.StartInfo.RedirectStandardError = true;
+                    }
+
+                    process.Start();
+
+                    if (needsStdinRedirect)
+                    {
+                        Stream input = previousOutput!;
+                        var stdin = process.StandardInput;
+
+                        backgroundTasks.Add(Task.Run(async () =>
+                        {
+                            await input.CopyToAsync(stdin.BaseStream);
+                            input.Dispose();
+                            stdin.Close();
+                        }));
+                    }
+
+                    if (needsStdoutRedirect)
+                    {
+                        Stream source = process.StandardOutput.BaseStream;
+
+                        if (outputFile != null && isLast)
+                        {
+                            backgroundTasks.Add(Task.Run(async () =>
+                            {
+                                using var fileStream = new FileStream(
+                                    outputFile,
+                                    outputAppend ? FileMode.Append : FileMode.Create
+                                );
+
+                                await source.CopyToAsync(fileStream);
+                            }));
+                        }
+                        else if (stdoutTarget != null)
+                        {
+                            Stream target = stdoutTarget;
+
+                            backgroundTasks.Add(Task.Run(async () =>
+                            {
+                                await source.CopyToAsync(target);
+                                target.Dispose();
+                            }));
+                        }
+                    }
+                    else
+                    {
+                        stdoutTarget?.Dispose();
+                    }
+
+                    if (errorFile != null)
+                    {
+                        string stderr = process.StandardError.ReadToEnd();
+
+                        if (errorAppend)
+                        {
+                            File.AppendAllText(errorFile, stderr);
+                        }
+                        else
+                        {
+                            File.WriteAllText(errorFile, stderr);
+                        }
+                    }
+
+                    externalProcesses.Add(process);
+                }
+            }
+
+            previousOutput = nextInput;
+        }
+
+        foreach (var process in externalProcesses)
+        {
+            process.WaitForExit();
+        }
+
+        Task.WaitAll(backgroundTasks.ToArray());
+    }
+
+    static void RunBuiltinInPipeline(
+        string command,
+        List<string> arguments,
+        List<string> stageParts,
+        Stream? previousOutput,
+        Stream? stdoutTarget,
+        bool isLast,
+        string? outputFile,
+        bool outputAppend)
+    {
+        TextWriter originalOut = Console.Out;
+        Stream? fileStream = null;
+        TextWriter? writer = null;
+
+        try
+        {
+            if (stdoutTarget != null)
+            {
+                writer = new StreamWriter(stdoutTarget) { AutoFlush = true };
+            }
+            else if (outputFile != null && isLast)
+            {
+                fileStream = new FileStream(
+                    outputFile,
+                    outputAppend ? FileMode.Append : FileMode.Create
+                );
+                writer = new StreamWriter(fileStream) { AutoFlush = true };
+            }
+
+            if (writer != null)
+            {
+                Console.SetOut(writer);
+            }
+
+            switch (command)
+            {
+                case "echo":
+                    Console.WriteLine(string.Join(" ", arguments.Skip(1)));
+                    break;
+
+                case "pwd":
+                    Console.WriteLine(Environment.CurrentDirectory);
+                    break;
+
+                case "cd":
+                    if (stageParts.Count >= 2)
+                    {
+                        HandleCd(stageParts[1]);
+                    }
+                    break;
+
+                case "type":
+                    if (stageParts.Count >= 2)
+                    {
+                        HandleType(stageParts[1]);
+                    }
+                    break;
+
+                case "complete":
+                    BuiltinCommands.HandleComplete(arguments);
+                    break;
+
+                case "jobs":
+                    JobManager.PrintJobs();
+                    break;
+            }
+
+            writer?.Flush();
+        }
+        finally
+        {
+            Console.SetOut(originalOut);
+            stdoutTarget?.Dispose();
+            fileStream?.Dispose();
+        }
+    }
+
+
 }
