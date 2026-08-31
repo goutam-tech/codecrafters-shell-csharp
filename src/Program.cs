@@ -488,6 +488,45 @@ class Program
                 continue;
             }
 
+            if (c == '$' && !insideSingleQuotes)
+            {
+                if (i + 1 < input.Length && input[i + 1] == '{')
+                {
+                    int closeBrace = input.IndexOf('}', i + 2);
+
+                    if (closeBrace != -1)
+                    {
+                        string name = input[(i + 2)..closeBrace];
+
+                        current.Append(ExpandVariable(name));
+
+                        i = closeBrace;
+                        continue;
+                    }
+                }
+
+                int j = i + 1;
+
+                while (j < input.Length &&
+                       (char.IsLetterOrDigit(input[j]) || input[j] == '_'))
+                {
+                    j++;
+                }
+
+                if (j > i + 1)
+                {
+                    string name = input[(i + 1)..j];
+
+                    current.Append(ExpandVariable(name));
+
+                    i = j - 1;
+                    continue;
+                }
+
+                current.Append(c);
+                continue;
+            }
+
             if (char.IsWhiteSpace(c) &&
                 !insideSingleQuotes &&
                 !insideDoubleQuotes)
@@ -1541,5 +1580,14 @@ class Program
 
             ShellVariables.Set(name, value);
         }
+    }
+    static string ExpandVariable(string name)
+    {
+        if (ShellVariables.TryGet(name, out string value))
+        {
+            return value;
+        }
+
+        return "";
     }
 }
