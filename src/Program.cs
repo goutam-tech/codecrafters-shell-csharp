@@ -177,6 +177,42 @@ class Program
                 continue;
             }
 
+            if (command == "ps")
+            {
+                ProcessManager.PrintProcessTable();
+                continue;
+            }
+
+            if (command == "fg")
+            {
+                ProcessManager.HandleFg(arguments);
+                continue;
+            }
+
+            if (command == "bg")
+            {
+                ProcessManager.HandleBg(arguments);
+                continue;
+            }
+
+            if (command == "kill")
+            {
+                ProcessManager.HandleKill(arguments);
+                continue;
+            }
+
+            if (command == "killall")
+            {
+                ProcessManager.HandleKillAll(arguments);
+                continue;
+            }
+
+            if (command == "ls")
+            {
+                HandleLs(arguments);
+                continue;
+            }
+
             if (command == "history")
             {
                 if (arguments.Count >= 3 && arguments[1] == "-r")
@@ -391,6 +427,41 @@ class Program
                mode.HasFlag(
                    UnixFileMode.OtherExecute
                );
+    }
+
+    static void HandleLs(List<string> arguments)
+    {
+        bool showHidden = false;
+        string? path = null;
+
+        for (int i = 1; i < arguments.Count; i++)
+        {
+            string token = arguments[i];
+
+            if (token == "-a" || token == "-la" || token == "-al")
+            {
+                showHidden = true;
+            }
+            else
+            {
+                path = token;
+            }
+        }
+
+        string directory = path ?? Environment.CurrentDirectory;
+
+        if (!Directory.Exists(directory))
+        {
+            Console.WriteLine($"ls: cannot access '{directory}': No such file or directory");
+            return;
+        }
+
+        List<string> entries = Directory.GetFileSystemEntries(directory)
+            .Select(Path.GetFileName).Where(name => name != null).
+            Select(name => name!).Where(name => showHidden || !name.StartsWith("."))
+            .OrderBy(name => name, StringComparer.Ordinal).ToList();
+
+        Console.WriteLine(string.Join("  ", entries));
     }
 
     static void HandleCd(string path)

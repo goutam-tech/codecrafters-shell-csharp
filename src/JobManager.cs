@@ -1,5 +1,4 @@
-﻿// JobManager.cs — full replacement (polling only, no Exited event)
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using System;
 using System.Diagnostics;
@@ -70,6 +69,15 @@ public static class JobManager
                 job.Status = "Done";
             }
         }
+    }
+
+    public static Job? GetJob(int jobNumber)
+    {
+        return jobs.FirstOrDefault(j => j.JobNumber == jobNumber);
+    }
+    public static void RemoveJob(int jobNumber)
+    {
+        jobs.RemoveAll(j => j.JobNumber == jobNumber);
     }
 
     public static void PrintJobs()
